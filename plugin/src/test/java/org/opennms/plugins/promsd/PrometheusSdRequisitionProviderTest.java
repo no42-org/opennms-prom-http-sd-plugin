@@ -85,7 +85,10 @@ class PrometheusSdRequisitionProviderTest {
         Map<String, String> m = new HashMap<>();
         m.put("url", "http://127.0.0.1:" + server.getAddress().getPort() + "/sd");
         m.put("foreignSource", "nl6");
-        for (int i = 0; i < kv.length; i += 2) {
+        if (kv.length % 2 != 0) {
+            throw new IllegalArgumentException("params takes key/value pairs");
+        }
+        for (int i = 0; i + 1 < kv.length; i += 2) {
             m.put(kv[i], kv[i + 1]);
         }
         return m;
