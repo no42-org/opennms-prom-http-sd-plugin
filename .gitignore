@@ -1,0 +1,12 @@
+target/
+.idea/
+*.iml
+.DS_Store
+
+# AI tools
+docs/superpowers/
+_bmad-output/
+_bmad/
+openspec/
+.claude/
+.superpowers/
