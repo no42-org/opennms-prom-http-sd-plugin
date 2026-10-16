@@ -1,0 +1,4 @@
+[
+  {"targets":["10.42.0.1"],"labels":{"__meta_nl6_resource":"cisco_ios","__meta_nl6_device_type":"Cisco IOS","__meta_nl6_sys_name":"core-rtr-01","__meta_nl6_snmp_port":"161"}},
+  {"targets":["10.42.0.2:1161"],"labels":{"__meta_nl6_resource":"cisco_ios","__meta_nl6_device_type":"Cisco IOS","__meta_nl6_sys_name":"core-rtr-02","__meta_nl6_snmp_port":"1161"}}
+]
