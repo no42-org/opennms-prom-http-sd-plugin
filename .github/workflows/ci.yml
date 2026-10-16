@@ -1,0 +1,84 @@
+# Copyright 2026 Ronny Trommer <ronny@no42.org>
+# SPDX-License-Identifier: Apache-2.0
+#
+# ci-standard ci pipeline: Tier 1 gates on every PR and push to main, Tier 2 scanners on main and weekly.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    uses: ./.github/workflows/gates.yml
+    with:
+      commit-range: ${{ github.event_name == 'pull_request' && format('origin/{0}..HEAD', github.base_ref) || format('{0}..{1}', github.event.before, github.sha) }}
+  codeql:
+    if: github.event_name != 'pull_request'
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@439137e1b50c27ba9e2f9befc93e43091b449c34  # v3.32.0
+        with:
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@439137e1b50c27ba9e2f9befc93e43091b449c34  # v3.32.0
+  scorecard:
+    if: github.event_name != 'pull_request' && github.event.repository.private == false
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e  # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+  image-scan:
+    if: github.event_name != 'pull_request'
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      MISE_VERSION: v2026.10.8
+      MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: go,node,rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install mise
+        # The installer is pinned by MISE_VERSION and verifies the binary's sha256 before running it.
+        run: | # nosemgrep: yaml.github-actions.security.gha-curl-pipe-shell.gha-curl-pipe-shell
+          curl -fsSL https://mise.run | MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+      - run: make setup
+      - run: make image image-scan

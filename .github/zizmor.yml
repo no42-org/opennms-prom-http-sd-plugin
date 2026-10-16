@@ -1,0 +1,6 @@
+# Copyright 2026 Ronny Trommer <ronny@no42.org>
+# SPDX-License-Identifier: Apache-2.0
+#
+# zizmor config. Empty on purpose. The self-repository audit fires only at help level on local workflow calls,
+# below the medium threshold the tests use. If it rises, ignore "*.yml" here: actionlint 1.7.12 still rejects the $/ syntax.
+rules: {}

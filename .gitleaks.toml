@@ -1,0 +1,19 @@
+# Copyright 2026 The OpenNMS Group, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Created by Ronny Trommer <ronny@opennms.com>
+
+# make lint runs `gitleaks dir .`, which also scans untracked build output.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test-only TLS material, Maven build output, local AI scratch"
+paths = [
+  '''^plugin/src/test/resources/tls/''',
+  '''(^|/)target/''',
+  '''^\.superpowers/''',
+]
+# README documents the OpenNMS default login admin:admin for the local smoke stack.
+regexTarget = "line"
+regexes = ['''curl -u admin:admin ''']
