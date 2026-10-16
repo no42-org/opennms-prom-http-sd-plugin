@@ -119,8 +119,9 @@ class SdFetcherTest {
 
     @Test
     void emptyCredentialsRejected() {
-        assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", ""), null));
+        assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher().fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", ""), null));
     }
 
     @Test
@@ -140,15 +141,18 @@ class SdFetcherTest {
     @Test
     void httpsWithoutTruststoreFails() throws Exception {
         int port = start(true);
-        assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("https://localhost:" + port + "/"), null, null));
+        assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher().fetch(URI.create("https://localhost:" + port + "/"), null, null));
     }
 
     @Test
     void hostnameStillVerified() throws Exception {
         int port = start(true);
-        SdFetchException e = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("https://127.0.0.1:" + port + "/"), null, TLS.resolve("ca.pem")));
+        SdFetchException e = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher()
+                        .fetch(URI.create("https://127.0.0.1:" + port + "/"), null, TLS.resolve("ca.pem")));
         boolean tlsCause = false;
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof SSLHandshakeException
@@ -162,18 +166,24 @@ class SdFetcherTest {
 
     @Test
     void controlCharInTokenRejected() {
-        SdFetchException e = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", "tok\n"), null));
+        SdFetchException e = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher()
+                        .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", "tok\n"), null));
         assertFalse(e.getMessage().contains("tok"));
-        SdFetchException b = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("u", "p\r"), null));
+        SdFetchException b = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher()
+                        .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("u", "p\r"), null));
         assertFalse(b.getMessage().contains("p\r"));
     }
 
     @Test
     void nonLatin1BearerTokenRejected() {
-        SdFetchException e = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", "tok€"), null));
+        SdFetchException e = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher()
+                        .fetch(URI.create("http://localhost:1/"), new ImmutableCredentials("", "tok€"), null));
         assertFalse(e.getMessage().contains("tok"));
     }
 
@@ -181,8 +191,9 @@ class SdFetcherTest {
     void non2xxFails() throws Exception {
         status = 503;
         int port = start(false);
-        SdFetchException e = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:" + port + "/"), null, null));
+        SdFetchException e = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher().fetch(URI.create("http://localhost:" + port + "/"), null, null));
         assertEquals(true, e.getMessage().contains("503"));
     }
 
@@ -190,16 +201,23 @@ class SdFetcherTest {
     void failsOnTimeout() throws Exception {
         sleepMs = 2000;
         int port = start(false);
-        assertThrows(SdFetchException.class, () -> new SdFetcher(Duration.ofSeconds(1), Duration.ofMillis(300))
-                .fetch(URI.create("http://localhost:" + port + "/"), null, null));
+        assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher(Duration.ofSeconds(1), Duration.ofMillis(300))
+                        .fetch(URI.create("http://localhost:" + port + "/"), null, null));
     }
 
     @Test
     void secretNotInMessage() throws Exception {
         status = 401;
         int port = start(false);
-        SdFetchException e = assertThrows(SdFetchException.class, () -> new SdFetcher()
-                .fetch(URI.create("http://localhost:" + port + "/"), new ImmutableCredentials("u", "s3cret"), null));
+        SdFetchException e = assertThrows(
+                SdFetchException.class,
+                () -> new SdFetcher()
+                        .fetch(
+                                URI.create("http://localhost:" + port + "/"),
+                                new ImmutableCredentials("u", "s3cret"),
+                                null));
         assertFalse(e.getMessage().contains("s3cret"));
     }
 }
