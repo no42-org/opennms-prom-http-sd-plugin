@@ -99,7 +99,10 @@
                 <version>2.44.3</version>
                 <configuration>
                     <java>
-                        <palantirJavaFormat/>
+                        <palantirJavaFormat>
+                            <!-- the spotless default crashes on JDK 25 -->
+                            <version>2.90.0</version>
+                        </palantirJavaFormat>
                     </java>
                 </configuration>
             </plugin>
