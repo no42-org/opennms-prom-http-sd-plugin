@@ -1,0 +1,26 @@
+[
+  {
+    "targets": ["192.0.2.11:161"],
+    "labels": {
+      "__meta_nl6_sys_name": "sim-router-01",
+      "__meta_nl6_vendor": "cisco",
+      "__meta_nl6_device_type": "router"
+    }
+  },
+  {
+    "targets": ["192.0.2.12:161"],
+    "labels": {
+      "__meta_nl6_sys_name": "sim-switch-02",
+      "__meta_nl6_vendor": "juniper",
+      "__meta_nl6_device_type": "switch"
+    }
+  },
+  {
+    "targets": ["192.0.2.13:161"],
+    "labels": {
+      "__meta_nl6_sys_name": "sim-firewall-03",
+      "__meta_nl6_vendor": "fortinet",
+      "__meta_nl6_device_type": "firewall"
+    }
+  }
+]
