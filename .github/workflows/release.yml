@@ -1,0 +1,99 @@
+# Copyright 2026 Ronny Trommer <ronny@no42.org>
+# SPDX-License-Identifier: Apache-2.0
+#
+# ci-standard release pipeline: a vX.Y.Z tag builds, signs, attests and drafts the release.
+name: release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MISE_VERSION: v2026.10.8
+  MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: go,node,rust
+
+jobs:
+  gates:
+    uses: ./.github/workflows/gates.yml
+    with:
+      commit-range: HEAD~1..HEAD
+  release:
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install mise
+        # The installer is pinned by MISE_VERSION and verifies the binary's sha256 before running it.
+        run: | # nosemgrep: yaml.github-actions.security.gha-curl-pipe-shell.gha-curl-pipe-shell
+          curl -fsSL https://mise.run | MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+      - run: make setup
+      - name: Version, name and image
+        run: |
+          {
+            echo "VERSION=${GITHUB_REF_NAME#v}"
+            echo "NAME=$(make -s print-NAME)"
+            echo "IMAGE=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          } >> "$GITHUB_ENV"
+      - run: make release-build image
+      - if: hashFiles('Dockerfile') != ''
+        name: Push and sign image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$VERSION"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION")
+          cosign sign --yes "$digest"
+      - run: make sbom
+      - uses: no42-org/blitsbom@9cda158bb0462d1d636511b3a696dc71b57bf560  # v0.8.4
+        with:
+          sbom: dist/${{ env.NAME }}-${{ env.VERSION }}.cdx.json
+          output: dist/${{ env.NAME }}-${{ env.VERSION }}-sbom.html
+          project: ${{ env.NAME }}
+          version: ${{ env.VERSION }}
+      - name: Checksums and signature
+        run: |
+          make -s checksums
+          cosign sign-blob --yes --bundle dist/checksums.txt.sigstore.json dist/checksums.txt
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; *) pre= ;; esac
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes "Release notes pending." $pre
+          find dist -type f -exec gh release upload "$GITHUB_REF_NAME" --clobber {} +
+      - if: hashFiles('Dockerfile') != ''
+        name: Push X.Y and latest tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$VERSION" in
+            *-*) ;;
+            *)
+              docker tag "$IMAGE:$VERSION" "$IMAGE:${VERSION%.*}"
+              docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
+              docker push "$IMAGE:${VERSION%.*}"
+              docker push "$IMAGE:latest"
+              ;;
+          esac

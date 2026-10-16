@@ -1,0 +1,143 @@
+# Copyright 2026 Ronny Trommer <ronny@no42.org>
+# SPDX-License-Identifier: Apache-2.0
+#
+# ci-standard Tier 1 gates. Called by ci, preview and release; never triggered directly.
+name: gates
+
+on:
+  workflow_call:
+    inputs:
+      commit-range:
+        description: Git range for make commitlint, for example origin/main..HEAD
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  MISE_VERSION: v2026.10.8
+  MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: go,node,rust
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history: git describe needs the tags for VERSION, and ecosystem checks such as buf breaking compare against origin/main.
+          fetch-depth: 0
+      - name: Fetch the default branch
+        # Some runners check out only the head ref; ecosystem checks compare against origin/<default branch>.
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          # A tag push may carry no default_branch in the event; ask the remote, then give up quietly.
+          [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p')
+          [ -n "$DEFAULT_BRANCH" ] || { echo "default branch unknown, skipping"; exit 0; }
+          git rev-parse -q --verify "origin/$DEFAULT_BRANCH" >/dev/null || git fetch -q --no-tags origin "+refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+      - name: Install mise
+        # The installer is pinned by MISE_VERSION and verifies the binary's sha256 before running it.
+        run: | # nosemgrep: yaml.github-actions.security.gha-curl-pipe-shell.gha-curl-pipe-shell
+          curl -fsSL https://mise.run | MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+      - name: Cache paths
+        id: cache-info
+        run: |
+          paths=$(make -s cache-info | sed -n 's/^paths=//p' | tr ' ' '\n')
+          key=$(make -s cache-info | sed -n 's/^key=//p')
+          {
+            echo "paths<<EOF"
+            echo "$paths"
+            echo "$HOME/.local/share/mise"
+            echo "EOF"
+            echo "key=$key"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ steps.cache-info.outputs.paths }}
+          key: ${{ runner.os }}-${{ steps.cache-info.outputs.key }}-${{ hashFiles('.tool-versions') }}
+      - run: make setup
+      - run: make check
+        env:
+          # Empty unless the repository defines it. buf repos set it so remote plugins run against the
+          # authenticated BSR quota (960 generations per hour) instead of the 10 per hour per IP.
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+  commitlint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - env:
+          COMMIT_RANGE: ${{ inputs.commit-range }}
+        run: |
+          # The caller passes the range through an expression; on some runners that evaluates to
+          # an empty string or "..", so derive it here from the runner environment when needed.
+          case "$COMMIT_RANGE" in
+            ""|..|*..)
+              if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ -n "$GITHUB_BASE_REF" ]; then
+                COMMIT_RANGE="origin/$GITHUB_BASE_REF..HEAD"
+              else
+                before=$(sed -n 's/^ *"before": *"\([0-9a-f]*\)".*/\1/p' "$GITHUB_EVENT_PATH" 2>/dev/null | head -1)
+                case "$before" in ""|0000000000000000000000000000000000000000) COMMIT_RANGE=HEAD~1..HEAD ;; *) COMMIT_RANGE="$before..HEAD" ;; esac
+              fi ;;
+          esac
+          case "$COMMIT_RANGE" in
+            0000000000000000000000000000000000000000*) COMMIT_RANGE=HEAD~1..HEAD ;;
+            origin/*..*)
+              # Some runners check out only the head ref; make sure the base ref exists.
+              base=${COMMIT_RANGE#origin/}; base=${base%%..*}
+              git rev-parse -q --verify "origin/$base" >/dev/null || git fetch -q --no-tags origin "+refs/heads/$base:refs/remotes/origin/$base" ;;
+          esac
+          # After a force-push the range's left side may be gone from the repository; lint the last commit then.
+          left=${COMMIT_RANGE%%..*}
+          case "$left" in HEAD*|origin/*) ;; *) git cat-file -e "$left^{commit}" 2>/dev/null || COMMIT_RANGE=HEAD~1..HEAD ;; esac
+          echo "commit range: $COMMIT_RANGE"
+          export COMMIT_RANGE
+          make commitlint
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install mise
+        # The installer is pinned by MISE_VERSION and verifies the binary's sha256 before running it.
+        run: | # nosemgrep: yaml.github-actions.security.gha-curl-pipe-shell.gha-curl-pipe-shell
+          curl -fsSL https://mise.run | MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+      # The same cache as check: the cargo tools compile for minutes on a cold runner.
+      - name: Cache paths
+        id: cache-info
+        run: |
+          paths=$(make -s cache-info | sed -n 's/^paths=//p' | tr ' ' '\n')
+          key=$(make -s cache-info | sed -n 's/^key=//p')
+          {
+            echo "paths<<EOF"
+            echo "$paths"
+            echo "$HOME/.local/share/mise"
+            echo "EOF"
+            echo "key=$key"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ steps.cache-info.outputs.paths }}
+          key: ${{ runner.os }}-${{ steps.cache-info.outputs.key }}-${{ hashFiles('.tool-versions') }}
+      - run: make setup
+      - run: make audit
+      - if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0

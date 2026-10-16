@@ -10,3 +10,5 @@ _bmad/
 openspec/
 .claude/
 .superpowers/
+build/
+dist/
