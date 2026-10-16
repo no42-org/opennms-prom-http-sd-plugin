@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 The OpenNMS Group, Inc.
+  SPDX-License-Identifier: Apache-2.0
+
+  Created by Ronny Trommer <ronny@opennms.com>
+-->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0">
+
+    <!-- optional: the SCV service is provided by the OpenNMS runtime, not by any Karaf feature,
+         so a mandatory reference makes karaf:verify fail to resolve the feature (same as the
+         integration API archetype does for its DAO references). -->
+    <reference id="scv" interface="org.opennms.integration.api.v1.scv.SecureCredentialsVault" availability="optional"/>
+
+    <service interface="org.opennms.integration.api.v1.requisition.RequisitionProvider">
+        <bean class="org.opennms.plugins.promsd.PrometheusSdRequisitionProvider">
+            <argument ref="scv"/>
+        </bean>
+    </service>
+</blueprint>
