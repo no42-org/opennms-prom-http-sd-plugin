@@ -74,7 +74,49 @@ curl -u admin:admin -H 'Content-Type: application/xml' -X POST http://localhost:
 </event>'
 ```
 
-For a scheduled import, add the same URL as a `requisition-def` in `provisiond-configuration.xml`.
+## Scheduling the import
+
+Horizon 36.0.5 does not offer plugin requisition providers in the "External Source" list of the External Requisitions page.
+The list is fixed in the OpenNMS UI.
+Add the schedule through the provisiond configuration in the Config Manager REST API instead.
+The commands need `curl` and `jq`, and an OpenNMS user with the admin role.
+
+```
+ONMS=http://localhost:8980/opennms
+AUTH=admin:admin
+URL='requisition://prometheus-sd?url=https://nl6.example:8080/api/v1/prometheus/sd&foreignSource=nl6&nodeLabelLabel=__meta_nl6_sys_name'
+
+curl -su "$AUTH" "$ONMS/rest/cm/provisiond/default" \
+  | jq --arg url "$URL" '."requisition-def" += [{"import-name": "nl6", "import-url-resource": $url, "cron-schedule": "0 0 * * * ?", "rescan-existing": "true"}]' \
+  | curl -su "$AUTH" -X PUT -H 'Content-Type: application/json' -d @- "$ONMS/rest/cm/provisiond/default"
+```
+
+- `import-name` is the name shown in the UI.
+  It must be unique.
+- `cron-schedule` is a Quartz cron expression with a seconds field.
+  `0 0 * * * ?` imports at the top of every hour.
+- `rescan-existing` is `true` (scan all nodes), `dbonly` (scan added nodes only) or `false` (no scanning).
+
+Provisiond picks up the schedule without a restart.
+The requisition then appears on the External Requisitions page with its URL, schedule and rescan behavior.
+OpenNMS disables the edit button for `requisition://` URLs, so change the entry through the same API:
+
+```
+curl -su "$AUTH" "$ONMS/rest/cm/provisiond/default" \
+  | jq '(."requisition-def"[] | select(."import-name" == "nl6") | ."cron-schedule") = "0 */15 * * * ?"' \
+  | curl -su "$AUTH" -X PUT -H 'Content-Type: application/json' -d @- "$ONMS/rest/cm/provisiond/default"
+```
+
+Remove it with the delete button on the page, or through the API:
+
+```
+curl -su "$AUTH" "$ONMS/rest/cm/provisiond/default" \
+  | jq '."requisition-def" |= map(select(."import-name" != "nl6"))' \
+  | curl -su "$AUTH" -X PUT -H 'Content-Type: application/json' -d @- "$ONMS/rest/cm/provisiond/default"
+```
+
+Removing the schedule stops future imports.
+The nodes of the foreign source stay in OpenNMS.
 
 ## Limitations
 
