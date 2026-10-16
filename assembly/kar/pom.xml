@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 The OpenNMS Group, Inc.
+  SPDX-License-Identifier: Apache-2.0
+
+  Created by Ronny Trommer <ronny@opennms.com>
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>org.opennms.plugins.promsd</groupId>
+        <artifactId>prometheus-sd-assembly</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>prometheus-sd-assembly-kar</artifactId>
+    <name>OpenNMS :: Plugins :: Prometheus SD :: Assembly :: KAR</name>
+    <packaging>kar</packaging>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.karaf.tooling</groupId>
+                <artifactId>karaf-maven-plugin</artifactId>
+                <version>${karaf.plugin.version}</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>create-kar</id>
+                        <goals>
+                            <goal>kar</goal>
+                        </goals>
+                        <configuration>
+                            <featuresFile>mvn:org.opennms.plugins.promsd/prometheus-sd-karaf-features/${project.version}/xml/features</featuresFile>
+                            <finalName>opennms-prometheus-sd-plugin</finalName>
+                            <ignoreDependencyFlag>true</ignoreDependencyFlag>
+                            <archive>
+                                <manifestEntries>
+                                    <Karaf-Feature-Start>false</Karaf-Feature-Start>
+                                </manifestEntries>
+                            </archive>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.opennms.plugins.promsd</groupId>
+            <artifactId>prometheus-sd-karaf-features</artifactId>
+            <version>${project.version}</version>
+            <type>xml</type>
+            <classifier>features</classifier>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

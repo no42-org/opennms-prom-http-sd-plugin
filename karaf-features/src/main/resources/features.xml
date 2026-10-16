@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  Copyright 2026 The OpenNMS Group, Inc.
+  SPDX-License-Identifier: Apache-2.0
+
+  Created by Ronny Trommer <ronny@opennms.com>
+-->
+<features name="opennms-plugins-prometheus-sd-features" xmlns="http://karaf.apache.org/xmlns/features/v1.4.0">
+
+    <feature name="opennms-plugins-prometheus-sd" description="OpenNMS :: Plugins :: Prometheus SD" version="${project.version}">
+        <feature dependency="true">aries-blueprint</feature>
+        <feature version="${opennms.api.version}" dependency="true">opennms-integration-api</feature>
+        <bundle dependency="true">mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.annotations.version}</bundle>
+        <bundle dependency="true">mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
+        <bundle dependency="true">mvn:com.fasterxml.jackson.core/jackson-databind/${jackson.version}</bundle>
+        <bundle>mvn:org.opennms.plugins.promsd/prometheus-sd-plugin/${project.version}</bundle>
+    </feature>
+</features>

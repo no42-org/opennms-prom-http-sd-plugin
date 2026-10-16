@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 The OpenNMS Group, Inc.
+  SPDX-License-Identifier: Apache-2.0
+
+  Created by Ronny Trommer <ronny@opennms.com>
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.opennms.plugins.promsd</groupId>
+    <artifactId>prometheus-sd-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>OpenNMS :: Plugins :: Prometheus SD :: Parent</name>
+    <packaging>pom</packaging>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+        <java.version>21</java.version>
+        <opennms.api.version>2.0.1</opennms.api.version>
+        <jackson.version>2.22.3</jackson.version>
+        <!-- jackson-annotations has no patch releases; 2.22 is the line's artifact -->
+        <jackson.annotations.version>2.22</jackson.annotations.version>
+        <karaf.version>4.4.9</karaf.version>
+        <karaf.plugin.version>4.4.9</karaf.plugin.version>
+        <maven.bundle.plugin.version>6.0.0</maven.bundle.plugin.version>
+        <junit.version>5.11.4</junit.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.opennms.integration.api</groupId>
+                <artifactId>api</artifactId>
+                <version>${opennms.api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opennms.integration.api</groupId>
+                <artifactId>common</artifactId>
+                <version>${opennms.api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-bundle-plugin</artifactId>
+                    <version>${maven.bundle.plugin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <instructions>
+                            <Bundle-RequiredExecutionEnvironment>JavaSE-${java.version}</Bundle-RequiredExecutionEnvironment>
+                        </instructions>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>3.6.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <modules>
+        <module>plugin</module>
+        <module>karaf-features</module>
+        <module>assembly</module>
+    </modules>
+</project>
